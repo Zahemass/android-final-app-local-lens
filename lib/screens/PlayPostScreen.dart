@@ -52,6 +52,11 @@ class _PlayPostScreenState extends State<PlayPostScreen> {
   bool isTtsMode = false;          // Tracks whether we’re in TTS mode
   String? translationText;         // Holds translation from API
 
+  String? profilePicUrl;
+  int postCount = 0;
+  int userScore = 0;
+
+
 
   @override
   void initState() {
@@ -62,7 +67,35 @@ class _PlayPostScreenState extends State<PlayPostScreen> {
     flutterTts.setVolume(1.0);
     flutterTts.setPitch(1.0);
     fetchSpotData();
+    fetchProfile();
   }
+
+  Future<void> fetchProfile() async {
+    final url = Uri.parse('http://192.168.29.68:4000/return-profile');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"username": widget.username}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        setState(() {
+          profilePicUrl = data['profile_image'];
+          postCount = data['postcount'] ?? 0;
+          userScore = data['score'] ?? 0;
+        });
+
+      } else {
+        print('❌ Profile API Error: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Profile fetch exception: $e');
+    }
+  }
+
 
   String? summarySpotName;
   String? summaryDescription;
@@ -614,10 +647,13 @@ class _PlayPostScreenState extends State<PlayPostScreen> {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 20,
-                      backgroundImage: AssetImage('assets/profile.png'),
+                      backgroundImage: profilePicUrl != null
+                          ? NetworkImage(profilePicUrl!)
+                          : const AssetImage('assets/profile.png') as ImageProvider,
                     ),
+
                     const SizedBox(width: 10),
                     Text(
                       widget.username,
